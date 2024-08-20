@@ -1,4 +1,5 @@
 # Eru: Multi-threaded File Downloader
+<img width="957" alt="image" src="https://github.com/user-attachments/assets/98f77b00-3c82-43f9-bfe9-1dd2ba7d6ebf">
 
 Eru is a simple and efficient multi-threaded file downloader designed to accelerate your download speeds. Written in C++, Eru leverages multiple threads to download file chunks concurrently, potentially increasing download speeds significantly. I made this as I had a simple requirement and did not want to buy IDM or pirate it.
 

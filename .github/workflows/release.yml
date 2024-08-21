@@ -1,4 +1,4 @@
-name: Miru Release
+name: Eru Release
 
 on:
   release:

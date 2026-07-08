@@ -3,14 +3,15 @@ name: Eru Release
 on:
   release:
     types: [created]
+  workflow_dispatch:
 
 jobs:
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - os: ubuntu-latest
             output_name: eru_linux
@@ -20,46 +21,68 @@ jobs:
             output_name: eru_windows.exe
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-    - name: Install dependencies (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libcurl4-openssl-dev
+      - name: Free up disk space (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /usr/local/.ghcup
+          df -h
 
-    - name: Install dependencies (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew install curl
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libssl-dev libcurl4-openssl-dev
 
-    - name: Install dependencies (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        vcpkg install curl:x64-windows
-        vcpkg integrate install
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install pkg-config openssl@3
 
-    - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          vcpkg install openssl:x64-windows curl:x64-windows pkgconf:x64-windows
+          echo "CMAKE_TOOLCHAIN_FILE=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" >> "$GITHUB_ENV"
+          echo "VCPKG_TARGET_TRIPLET=x64-windows" >> "$GITHUB_ENV"
 
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config Release
+      - name: Configure CMake
+        shell: bash
+        run: |
+          EXTRA=""
+          if [ -n "${CMAKE_TOOLCHAIN_FILE:-}" ]; then
+            EXTRA="-DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE -DVCPKG_TARGET_TRIPLET=$VCPKG_TARGET_TRIPLET"
+          fi
+          cmake -B build -DCMAKE_BUILD_TYPE=Release $EXTRA
 
-    - name: Rename binary
-      run: |
-        if [ "${{ matrix.os }}" == "windows-latest" ]; then
-          mv ${{github.workspace}}/build/src/Release/eru.exe ${{github.workspace}}/${{ matrix.output_name }}
-        else
-          mv ${{github.workspace}}/build/src/eru ${{github.workspace}}/${{ matrix.output_name }}
-        fi
-      shell: bash
+      - name: Build
+        shell: bash
+        run: cmake --build build --config Release --parallel
 
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ${{github.workspace}}/${{ matrix.output_name }}
-        asset_name: ${{ matrix.output_name }}
-        asset_content_type: application/octet-stream
+      - name: Rename binary
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            mv build/src/Release/eru.exe "${{ matrix.output_name }}"
+          else
+            mv build/src/eru "${{ matrix.output_name }}"
+          fi
+
+      - name: Clean up build tree
+        shell: bash
+        run: |
+          rm -rf build
+          df -h
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output_name }}
+          path: ${{ matrix.output_name }}
+
+      - name: Attach binary to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.output_name }}

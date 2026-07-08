@@ -1,4 +1,5 @@
 #include "downloader.h"
+#include "torrent_downloader.h"
 #include <iostream>
 #include <CLI/CLI.hpp>
 
@@ -45,6 +46,31 @@ int main(int argc, char *argv[])
 
     std::cout << "Eru v" << ERU_VERSION << std::endl;
     std::cout << "URL: " << url << std::endl;
+
+    if (TorrentDownloader::is_magnet(url) || TorrentDownloader::is_torrent_file(url))
+    {
+        if (output_file)
+        {
+            std::cout << "Save directory: " << *output_file << std::endl;
+        }
+        if (num_threads != 4)
+        {
+            std::cout << "Note: --threads is ignored for torrent downloads." << std::endl;
+        }
+
+        try
+        {
+            TorrentDownloader::download(url, output_file);
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "An error occurred during the torrent download: " << e.what() << std::endl;
+            return 1;
+        }
+
+        return 0;
+    }
+
     if (output_file)
     {
         std::cout << "Output file: " << *output_file << std::endl;

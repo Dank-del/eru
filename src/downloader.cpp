@@ -1,4 +1,5 @@
 #include "downloader.h"
+#include "common.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -7,9 +8,7 @@
 #include <atomic>
 #include <cmath>
 #include <chrono>
-#include <iomanip>
 #include <cpr/cpr.h>
-#include <indicators/progress_bar.hpp>
 
 std::mutex console_mutex;
 std::atomic<size_t> total_progress(0);
@@ -22,14 +21,6 @@ std::string get_filename_from_url(const std::string &url)
         return url.substr(pos + 1);
     }
     return "downloaded_file";
-}
-
-std::string format_size(size_t size)
-{
-    double size_mb = static_cast<double>(size) / (1024 * 1024);
-    std::stringstream ss;
-    ss << std::fixed << std::setprecision(2) << size_mb;
-    return ss.str();
 }
 
 void Downloader::download_file(const std::string &url, const std::optional<std::string> &output_file, int num_threads)
@@ -48,17 +39,7 @@ void Downloader::download_file(const std::string &url, const std::optional<std::
     std::cout << "Downloading to: " << filename << std::endl;
     std::cout << "File size: " << format_size(file_size) << " MB" << std::endl;
 
-    indicators::ProgressBar progress_bar{
-        indicators::option::BarWidth{50},
-        indicators::option::Start{"["},
-        indicators::option::Fill{"="},
-        indicators::option::Lead{">"},
-        indicators::option::Remainder{" "},
-        indicators::option::End{"]"},
-        indicators::option::ForegroundColor{indicators::Color::green},
-        indicators::option::ShowElapsedTime{true},
-        indicators::option::ShowRemainingTime{true},
-        indicators::option::FontStyles{std::vector<indicators::FontStyle>{indicators::FontStyle::bold}}};
+    indicators::ProgressBar progress_bar = make_progress_bar();
 
     std::vector<std::thread> threads;
     for (int i = 0; i < num_threads; ++i)

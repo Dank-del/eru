@@ -1,25 +1,26 @@
 # Eru: Multi-threaded File Downloader
 <img width="957" alt="image" src="https://github.com/user-attachments/assets/98f77b00-3c82-43f9-bfe9-1dd2ba7d6ebf">
 
-Eru is a small multi-threaded file downloader written in C++. It splits the target file into chunks, fetches them in parallel over HTTP/HTTPS with libcurl, and stitches the result back together. I built it because I wanted IDM-like behaviour without paying for IDM or pirating it.
+Eru is a small multi-threaded file downloader written in C++. It splits the target file into chunks, fetches them in parallel over HTTP/HTTPS with libcurl, and stitches the result back together. It also downloads **BitTorrent magnet links and `.torrent` files** via an embedded libtransmission core. I built it because I wanted IDM-like behaviour without paying for IDM or pirating it.
 
 ## Features
 
-- Multi-threaded downloading
+- Multi-threaded HTTP/HTTPS downloading
+- BitTorrent support via magnet links and `.torrent` files (powered by libtransmission)
 - Progress bar with real-time updates
 - Automatic filename detection from URL
 - Customizable number of download threads
-- Supports both HTTP and HTTPS
 - Displays download speed and estimated time remaining
 - Automatic merging of downloaded chunks
 
 ## Requirements
 
-- C++17 compatible compiler
-- CMake 3.14 or higher
-- libcurl
-- CLI11
-- indicators
+- C++20 compatible compiler
+- CMake 3.16 or higher
+- OpenSSL and pkg-config (build dependencies for the embedded libtransmission)
+- libcurl, CLI11, indicators (fetched automatically by CMake)
+
+> The first configure downloads and builds libtransmission (and its bundled dependencies) from source, so the initial build is slower than a plain HTTP-only build.
 
 ## Building from Source
 
@@ -49,14 +50,16 @@ Eru is a small multi-threaded file downloader written in C++. It splits the targ
 After building, you can run Eru using the following command:
 
 ```
-./src/eru --url <download_url> [options]
+./src/eru --url <download_url_or_magnet_or_torrent> [options]
 ```
+
+Eru auto-detects the source type: `magnet:` links and paths ending in `.torrent` are downloaded over BitTorrent, everything else over HTTP/HTTPS.
 
 ### Options
 
-- `-u, --url <url>`: Specify the URL of the file to download (required)
-- `-o, --output <filename>`: Set the output filename (optional, auto-detected if not specified)
-- `-t, --threads <number>`: Set the number of download threads (default: 4)
+- `-u, --url <url>`: URL to download, a `magnet:` link, or a path to a `.torrent` file (required)
+- `-o, --output <path>`: Output filename for HTTP downloads, or the save **directory** for torrents (optional)
+- `-t, --threads <number>`: Number of download threads for HTTP (default: 4; ignored for torrents)
 - `-a, --about`: Display information about Eru
 - `-h, --help`: Show help message
 
@@ -72,7 +75,17 @@ After building, you can run Eru using the following command:
    ./src/eru --url https://example.com/large_file.zip --output my_file.zip --threads 8
    ```
 
-3. Display information about Eru:
+3. Download a magnet link into a folder:
+   ```
+   ./src/eru --url "magnet:?xt=urn:btih:..." --output ./downloads
+   ```
+
+4. Download from a local `.torrent` file:
+   ```
+   ./src/eru --url ./ubuntu.torrent --output ./downloads
+   ```
+
+5. Display information about Eru:
    ```
    ./src/eru --about
    ```
@@ -95,3 +108,4 @@ Sayan Biswas
 - [CPR](https://github.com/libcpr/cpr) for HTTP requests
 - [CLI11](https://github.com/CLIUtils/CLI11) for command-line parsing
 - [indicators](https://github.com/p-ranav/indicators) for progress bars
+- [Transmission](https://github.com/transmission/transmission) (libtransmission) for BitTorrent

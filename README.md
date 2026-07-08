@@ -1,12 +1,14 @@
 # Eru: Multi-threaded File Downloader
 <img width="957" alt="image" src="https://github.com/user-attachments/assets/98f77b00-3c82-43f9-bfe9-1dd2ba7d6ebf">
 
-Eru is a small multi-threaded file downloader written in C++. It splits the target file into chunks, fetches them in parallel over HTTP/HTTPS with libcurl, and stitches the result back together. It also downloads **BitTorrent magnet links and `.torrent` files** by handing them off to [aria2c](https://aria2.github.io/). I built it because I wanted IDM-like behaviour without paying for IDM or pirating it.
+Eru is a small multi-threaded file downloader written in C++. It splits the target file into chunks, fetches them in parallel over HTTP/HTTPS with libcurl, and stitches the result back together. It also downloads **BitTorrent magnet links and `.torrent` files** using [aria2](https://aria2.github.io/). I built it because I wanted IDM-like behaviour without paying for IDM or pirating it.
+
+On Linux and macOS, `libaria2` is compiled straight into the binary, so torrent support is fully self-contained. On Windows, Eru shells out to an external `aria2c` binary (`choco install aria2`).
 
 ## Features
 
 - Multi-threaded HTTP/HTTPS downloading
-- BitTorrent support via magnet links and `.torrent` files (handled by aria2c)
+- BitTorrent support via magnet links and `.torrent` files (powered by aria2)
 - Progress bar with real-time updates
 - Automatic filename detection from URL
 - Customizable number of download threads
@@ -18,7 +20,8 @@ Eru is a small multi-threaded file downloader written in C++. It splits the targ
 - C++17 compatible compiler
 - CMake 3.16 or higher
 - libcurl (build dependency; CLI11 and indicators are fetched automatically by CMake)
-- [aria2](https://aria2.github.io/) at runtime for torrent/magnet downloads (`apt install aria2`, `brew install aria2`, or `choco install aria2`)
+- To embed torrent support (Linux/macOS): autoconf, automake, libtool, pkg-config, gettext, plus OpenSSL and zlib headers — used to build the bundled `libaria2` from source
+- Windows only: [aria2](https://aria2.github.io/) installed at runtime for torrent/magnet downloads
 
 ## Building from Source
 

@@ -107,7 +107,7 @@ void TorrentDownloader::download(const std::string &source, const std::optional<
         std::cout << "Fetching metadata from peers..." << std::endl;
     }
 
-    std::optional<indicators::ProgressBar> progress_bar;
+    indicators::ProgressBar progress_bar = make_progress_bar();
     bool have_metadata = false;
     auto last_print = std::chrono::steady_clock::now() - std::chrono::seconds(1);
 
@@ -153,12 +153,11 @@ void TorrentDownloader::download(const std::string &source, const std::optional<
         if (!have_metadata)
         {
             have_metadata = true;
-            progress_bar.emplace(make_progress_bar());
             std::cout << "\r" << std::string(60, ' ') << "\r";
             std::cout << "Size: " << format_size(static_cast<size_t>(total)) << " MB" << std::endl;
         }
 
-        progress_bar->set_progress(100.0 * static_cast<double>(done) / static_cast<double>(total));
+        progress_bar.set_progress(100.0 * static_cast<double>(done) / static_cast<double>(total));
         std::cout << "\rdownloading  "
                   << format_size(static_cast<size_t>(done)) << " / "
                   << format_size(static_cast<size_t>(total)) << " MB  "
@@ -174,9 +173,9 @@ void TorrentDownloader::download(const std::string &source, const std::optional<
         throw std::runtime_error("aria2 reported a download error.");
     }
 
-    if (progress_bar && state.completed)
+    if (have_metadata && state.completed)
     {
-        progress_bar->set_progress(100);
+        progress_bar.set_progress(100);
     }
     std::cout << "\nDownload complete. Files saved under: " << save_dir << std::endl;
 }

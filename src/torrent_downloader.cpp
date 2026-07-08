@@ -8,10 +8,20 @@
 #include <csignal>
 #include <filesystem>
 #include <optional>
+#include <memory>
+#include <vector>
+#include <cstdint>
 
-#include <libtransmission/transmission.h>
-#include <libtransmission/variant.h>
-#include <libtransmission/error.h>
+#include <libtorrent/session.hpp>
+#include <libtorrent/settings_pack.hpp>
+#include <libtorrent/add_torrent_params.hpp>
+#include <libtorrent/magnet_uri.hpp>
+#include <libtorrent/torrent_info.hpp>
+#include <libtorrent/torrent_handle.hpp>
+#include <libtorrent/torrent_status.hpp>
+#include <libtorrent/alert_types.hpp>
+
+namespace lt = libtorrent;
 
 namespace
 {
@@ -26,21 +36,22 @@ namespace
     constexpr auto stall_timeout = std::chrono::seconds(180);
     constexpr auto poll_interval = std::chrono::milliseconds(400);
 
-    const char *activity_name(tr_torrent_activity activity)
+    const char *state_name(lt::torrent_status::state_t state)
     {
-        switch (activity)
+        switch (state)
         {
-        case TR_STATUS_CHECK_WAIT:
-        case TR_STATUS_CHECK:
+        case lt::torrent_status::checking_files:
+        case lt::torrent_status::checking_resume_data:
             return "checking";
-        case TR_STATUS_DOWNLOAD_WAIT:
-        case TR_STATUS_DOWNLOAD:
+        case lt::torrent_status::downloading_metadata:
+            return "metadata";
+        case lt::torrent_status::downloading:
             return "downloading";
-        case TR_STATUS_SEED_WAIT:
-        case TR_STATUS_SEED:
+        case lt::torrent_status::finished:
+        case lt::torrent_status::seeding:
             return "seeding";
         default:
-            return "stopped";
+            return "queued";
         }
     }
 }
@@ -64,54 +75,26 @@ void TorrentDownloader::download(const std::string &source, const std::optional<
     const std::string save_dir = save_path.value_or(".");
     fs::create_directories(save_dir);
 
-    const fs::path config_dir = fs::temp_directory_path() / "eru-session";
-    std::error_code ec;
-    fs::remove_all(config_dir, ec);
-    fs::create_directories(config_dir);
+    lt::settings_pack settings;
+    settings.set_int(lt::settings_pack::alert_mask,
+                     lt::alert_category::error | lt::alert_category::status);
+    settings.set_str(lt::settings_pack::user_agent, "Eru/1.0 libtorrent");
+    lt::session session(settings);
 
-    tr_variant settings;
-    tr_variantInitDict(&settings, 0);
-    tr_sessionGetDefaultSettings(&settings);
-    tr_session *session = tr_sessionInit(config_dir.string().c_str(), false, &settings);
-    tr_variantClear(&settings);
-
-    if (session == nullptr)
+    lt::add_torrent_params params;
+    if (is_magnet(source))
     {
-        fs::remove_all(config_dir, ec);
-        throw std::runtime_error("Failed to initialize the BitTorrent session.");
+        params = lt::parse_magnet_uri(source);
     }
-
-    tr_ctor *ctor = tr_ctorNew(session);
-    tr_error *err = nullptr;
-    const bool loaded = is_magnet(source)
-                            ? tr_ctorSetMetainfoFromMagnetLink(ctor, source.c_str(), &err)
-                            : tr_ctorSetMetainfoFromFile(ctor, source.c_str(), &err);
-
-    if (!loaded)
+    else
     {
-        std::string message = err != nullptr && err->message != nullptr
-                                  ? err->message
-                                  : "invalid magnet link or .torrent file";
-        tr_error_free(err);
-        tr_ctorFree(ctor);
-        tr_sessionClose(session);
-        fs::remove_all(config_dir, ec);
-        throw std::runtime_error("Failed to load torrent: " + message);
+        params.ti = std::make_shared<lt::torrent_info>(source);
     }
+    params.save_path = save_dir;
 
-    tr_ctorSetDownloadDir(ctor, TR_FORCE, save_dir.c_str());
-
-    tr_torrent *torrent = tr_torrentNew(ctor, nullptr);
-    tr_ctorFree(ctor);
-    if (torrent == nullptr)
-    {
-        tr_sessionClose(session);
-        fs::remove_all(config_dir, ec);
-        throw std::runtime_error("Failed to add the torrent to the session.");
-    }
+    lt::torrent_handle handle = session.add_torrent(std::move(params));
 
     std::signal(SIGINT, handle_sigint);
-    tr_torrentStart(torrent);
 
     std::cout << "Saving to: " << save_dir << std::endl;
     if (is_magnet(source))
@@ -122,17 +105,28 @@ void TorrentDownloader::download(const std::string &source, const std::optional<
     std::optional<indicators::ProgressBar> progress_bar;
     const auto started_at = std::chrono::steady_clock::now();
     auto last_progress_at = started_at;
-    uint64_t last_have = 0;
+    std::int64_t last_done = 0;
     bool have_metadata = false;
     bool completed = false;
 
     while (!g_interrupted.load())
     {
-        const tr_stat *st = tr_torrentStat(torrent);
-
-        if (st->metadataPercentComplete < 1.0f)
+        std::vector<lt::alert *> alerts;
+        session.pop_alerts(&alerts);
+        for (lt::alert *a : alerts)
         {
-            std::cout << "\rFetching metadata... peers: " << st->peersConnected << "   " << std::flush;
+            if (auto *e = lt::alert_cast<lt::torrent_error_alert>(a))
+            {
+                std::cout << std::endl;
+                std::cerr << "Torrent error: " << e->message() << std::endl;
+            }
+        }
+
+        const lt::torrent_status st = handle.status();
+
+        if (!st.has_metadata)
+        {
+            std::cout << "\rFetching metadata... peers: " << st.num_peers << "   " << std::flush;
             if (std::chrono::steady_clock::now() - started_at > metadata_timeout)
             {
                 std::cout << std::endl;
@@ -148,27 +142,29 @@ void TorrentDownloader::download(const std::string &source, const std::optional<
             have_metadata = true;
             progress_bar.emplace(make_progress_bar());
             std::cout << "\r" << std::string(60, ' ') << "\r";
-            std::cout << "Name: " << tr_torrentName(torrent) << std::endl;
-            std::cout << "Size: " << format_size(st->sizeWhenDone) << " MB" << std::endl;
+            std::cout << "Name: " << st.name << std::endl;
+            std::cout << "Size: " << format_size(st.total_wanted) << " MB" << std::endl;
         }
 
-        const double percent = 100.0 * st->percentDone;
+        const double percent = st.total_wanted > 0
+                                   ? 100.0 * static_cast<double>(st.total_wanted_done) / static_cast<double>(st.total_wanted)
+                                   : 0.0;
         progress_bar->set_progress(percent);
-        std::cout << "\r" << activity_name(st->activity) << "  "
-                  << format_size(st->haveValid) << " / " << format_size(st->sizeWhenDone) << " MB  "
-                  << std::fixed << std::setprecision(2) << (st->pieceDownloadSpeed_KBps / 1024.0) << " MB/s  "
-                  << "peers: " << st->peersConnected << "   " << std::flush;
+        std::cout << "\r" << state_name(st.state) << "  "
+                  << format_size(st.total_wanted_done) << " / " << format_size(st.total_wanted) << " MB  "
+                  << std::fixed << std::setprecision(2) << (st.download_rate / (1024.0 * 1024.0)) << " MB/s  "
+                  << "peers: " << st.num_peers << "   " << std::flush;
 
-        if (st->percentDone >= 1.0f || st->activity == TR_STATUS_SEED || st->activity == TR_STATUS_SEED_WAIT)
+        if (st.is_finished || st.state == lt::torrent_status::seeding || st.state == lt::torrent_status::finished)
         {
             completed = true;
             break;
         }
 
         const auto now = std::chrono::steady_clock::now();
-        if (st->haveValid > last_have)
+        if (st.total_wanted_done > last_done)
         {
-            last_have = st->haveValid;
+            last_done = st.total_wanted_done;
             last_progress_at = now;
         }
         else if (now - last_progress_at > stall_timeout)
@@ -188,9 +184,8 @@ void TorrentDownloader::download(const std::string &source, const std::optional<
         progress_bar->set_progress(100);
     }
 
-    tr_torrentStop(torrent);
-    tr_sessionClose(session);
-    fs::remove_all(config_dir, ec);
+    session.pause();
+    lt::session_proxy proxy = session.abort();
 
     if (g_interrupted.load())
     {

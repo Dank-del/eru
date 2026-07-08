@@ -33,26 +33,31 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake pkg-config libssl-dev libcurl4-openssl-dev
+          sudo apt-get install -y build-essential cmake libboost-dev libssl-dev libcurl4-openssl-dev
 
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
-        run: brew install pkg-config openssl@3
+        run: |
+          brew install boost openssl@3
+          echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl@3)" >> "$GITHUB_ENV"
 
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
         shell: bash
         run: |
-          vcpkg install openssl:x64-windows curl:x64-windows pkgconf:x64-windows
+          vcpkg install boost-system:x64-windows boost-asio:x64-windows boost-multiprecision:x64-windows boost-pool:x64-windows boost-crc:x64-windows openssl:x64-windows curl:x64-windows
           echo "CMAKE_TOOLCHAIN_FILE=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" >> "$GITHUB_ENV"
           echo "VCPKG_TARGET_TRIPLET=x64-windows" >> "$GITHUB_ENV"
 
       - name: Configure CMake
         shell: bash
         run: |
-          EXTRA=""
+          EXTRA="-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
           if [ -n "${CMAKE_TOOLCHAIN_FILE:-}" ]; then
-            EXTRA="-DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE -DVCPKG_TARGET_TRIPLET=$VCPKG_TARGET_TRIPLET"
+            EXTRA="$EXTRA -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE -DVCPKG_TARGET_TRIPLET=$VCPKG_TARGET_TRIPLET"
+          fi
+          if [ -n "${OPENSSL_ROOT_DIR:-}" ]; then
+            EXTRA="$EXTRA -DOPENSSL_ROOT_DIR=$OPENSSL_ROOT_DIR"
           fi
           cmake -B build -DCMAKE_BUILD_TYPE=Release $EXTRA
 

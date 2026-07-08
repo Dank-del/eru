@@ -1,12 +1,12 @@
 # Eru: Multi-threaded File Downloader
 <img width="957" alt="image" src="https://github.com/user-attachments/assets/98f77b00-3c82-43f9-bfe9-1dd2ba7d6ebf">
 
-Eru is a small multi-threaded file downloader written in C++. It splits the target file into chunks, fetches them in parallel over HTTP/HTTPS with libcurl, and stitches the result back together. It also downloads **BitTorrent magnet links and `.torrent` files** via an embedded libtransmission core. I built it because I wanted IDM-like behaviour without paying for IDM or pirating it.
+Eru is a small multi-threaded file downloader written in C++. It splits the target file into chunks, fetches them in parallel over HTTP/HTTPS with libcurl, and stitches the result back together. It also downloads **BitTorrent magnet links and `.torrent` files** via an embedded libtorrent core. I built it because I wanted IDM-like behaviour without paying for IDM or pirating it.
 
 ## Features
 
 - Multi-threaded HTTP/HTTPS downloading
-- BitTorrent support via magnet links and `.torrent` files (powered by libtransmission)
+- BitTorrent support via magnet links and `.torrent` files (powered by libtorrent)
 - Progress bar with real-time updates
 - Automatic filename detection from URL
 - Customizable number of download threads
@@ -15,12 +15,12 @@ Eru is a small multi-threaded file downloader written in C++. It splits the targ
 
 ## Requirements
 
-- C++20 compatible compiler
+- C++17 compatible compiler
 - CMake 3.16 or higher
-- OpenSSL and pkg-config (build dependencies for the embedded libtransmission)
+- Boost and OpenSSL development headers (build dependencies for the embedded libtorrent)
 - libcurl, CLI11, indicators (fetched automatically by CMake)
 
-> The first configure downloads and builds libtransmission (and its bundled dependencies) from source, so the initial build is slower than a plain HTTP-only build.
+> The first configure downloads and builds libtorrent from source, so the initial build is slower than a plain HTTP-only build.
 
 ## Building from Source
 
@@ -108,4 +108,4 @@ Sayan Biswas
 - [CPR](https://github.com/libcpr/cpr) for HTTP requests
 - [CLI11](https://github.com/CLIUtils/CLI11) for command-line parsing
 - [indicators](https://github.com/p-ranav/indicators) for progress bars
-- [Transmission](https://github.com/transmission/transmission) (libtransmission) for BitTorrent
+- [libtorrent](https://github.com/arvidn/libtorrent) for BitTorrent

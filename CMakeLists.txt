@@ -4,6 +4,8 @@ project(file_downloader VERSION 1.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(BUILD_SHARED_LIBS OFF)
+
 include(FetchContent)
 
 FetchContent_Declare(

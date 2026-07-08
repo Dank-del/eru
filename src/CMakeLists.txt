@@ -11,3 +11,7 @@ target_link_libraries(downloader PUBLIC cpr::cpr indicators::indicators)
 
 add_executable(eru main.cpp)
 target_link_libraries(eru PRIVATE downloader CLI11::CLI11 indicators::indicators)
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_options(eru PRIVATE -static-libgcc -static-libstdc++)
+endif()

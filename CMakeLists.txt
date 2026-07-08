@@ -27,12 +27,4 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(indicators)
 
-FetchContent_Declare(
-  libtorrent
-  GIT_REPOSITORY https://github.com/arvidn/libtorrent.git
-  GIT_TAG v2.0.11
-  GIT_SHALLOW TRUE
-)
-FetchContent_MakeAvailable(libtorrent)
-
 add_subdirectory(src)

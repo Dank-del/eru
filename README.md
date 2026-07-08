@@ -1,12 +1,12 @@
 # Eru: Multi-threaded File Downloader
 <img width="957" alt="image" src="https://github.com/user-attachments/assets/98f77b00-3c82-43f9-bfe9-1dd2ba7d6ebf">
 
-Eru is a small multi-threaded file downloader written in C++. It splits the target file into chunks, fetches them in parallel over HTTP/HTTPS with libcurl, and stitches the result back together. It also downloads **BitTorrent magnet links and `.torrent` files** via an embedded libtorrent core. I built it because I wanted IDM-like behaviour without paying for IDM or pirating it.
+Eru is a small multi-threaded file downloader written in C++. It splits the target file into chunks, fetches them in parallel over HTTP/HTTPS with libcurl, and stitches the result back together. It also downloads **BitTorrent magnet links and `.torrent` files** by handing them off to [aria2c](https://aria2.github.io/). I built it because I wanted IDM-like behaviour without paying for IDM or pirating it.
 
 ## Features
 
 - Multi-threaded HTTP/HTTPS downloading
-- BitTorrent support via magnet links and `.torrent` files (powered by libtorrent)
+- BitTorrent support via magnet links and `.torrent` files (handled by aria2c)
 - Progress bar with real-time updates
 - Automatic filename detection from URL
 - Customizable number of download threads
@@ -17,10 +17,8 @@ Eru is a small multi-threaded file downloader written in C++. It splits the targ
 
 - C++17 compatible compiler
 - CMake 3.16 or higher
-- Boost and OpenSSL development headers (build dependencies for the embedded libtorrent)
-- libcurl, CLI11, indicators (fetched automatically by CMake)
-
-> The first configure downloads and builds libtorrent from source, so the initial build is slower than a plain HTTP-only build.
+- libcurl (build dependency; CLI11 and indicators are fetched automatically by CMake)
+- [aria2](https://aria2.github.io/) at runtime for torrent/magnet downloads (`apt install aria2`, `brew install aria2`, or `choco install aria2`)
 
 ## Building from Source
 
@@ -108,4 +106,4 @@ Sayan Biswas
 - [CPR](https://github.com/libcpr/cpr) for HTTP requests
 - [CLI11](https://github.com/CLIUtils/CLI11) for command-line parsing
 - [indicators](https://github.com/p-ranav/indicators) for progress bars
-- [libtorrent](https://github.com/arvidn/libtorrent) for BitTorrent
+- [aria2](https://aria2.github.io/) for BitTorrent downloads

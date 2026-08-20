@@ -1,0 +1,29 @@
+format = 1
+
+[project]
+name = 'eru'
+version = '0.1.0'
+language = 'cxx'
+backend = 'cmake'
+managed = false
+type = 'executable'
+cpp_standard = 20
+
+[build]
+
+[dependencies]
+[dependencies.cli11]
+source = 'github.com/CLIUtils/CLI11'
+ref = 'v2.4.2'
+
+[dependencies.cpr]
+source = 'github.com/libcpr/cpr'
+ref = '1.10.x'
+
+[dependencies.cpr.cmake]
+[dependencies.cpr.cmake.options]
+CPR_CURL_USE_LIBPSL = 'OFF'
+
+[dependencies.indicators]
+source = 'github.com/p-ranav/indicators'
+ref = 'v2.3'

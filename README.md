@@ -19,9 +19,13 @@ On Linux and macOS, `libaria2` is compiled straight into the binary, so torrent 
 
 - C++17 compatible compiler
 - CMake 3.16 or higher
-- libcurl (build dependency; CLI11 and indicators are fetched automatically by CMake)
+- [Nodus](https://github.com/Dank-del/nodus) `0.0.1-alpha` or newer
 - To embed torrent support (Linux/macOS): autoconf, automake, libtool, pkg-config, gettext, plus OpenSSL and zlib headers — used to build the bundled `libaria2` from source
 - Windows only: [aria2](https://aria2.github.io/) installed at runtime for torrent/magnet downloads
+
+Eru's CMake dependencies are declared in `nodus.toml` and locked in
+`cmake/nodus/package-lock.cmake`. Nodus uses CPM.cmake to acquire CPR, CLI11,
+and indicators; no manual libcurl installation is required for that path.
 
 ## Building from Source
 
@@ -31,20 +35,31 @@ On Linux and macOS, `libaria2` is compiled straight into the binary, so torrent 
    cd eru
    ```
 
-2. Create a build directory and navigate to it:
+2. Install the locked source dependencies:
    ```
-   mkdir build && cd build
+   nodus install
    ```
 
 3. Configure the project with CMake:
    ```
-   cmake ..
+   cmake -S . -B build
    ```
 
 4. Build the project:
    ```
-   cmake --build .
+   cmake --build build
    ```
+
+On Linux/macOS, omit no options to build embedded aria2 support. To build only
+the HTTP downloader while setting up the project, use:
+
+```
+cmake -S . -B build -DERU_EMBED_ARIA2=OFF
+```
+
+Eru statically links the GNU runtime by default. If your distribution does not
+provide the static `libstdc++` archive, configure with
+`-DERU_STATIC_RUNTIME=OFF` instead.
 
 ## Usage
 

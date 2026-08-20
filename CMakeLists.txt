@@ -1,33 +1,18 @@
 cmake_minimum_required(VERSION 3.16)
 project(file_downloader VERSION 1.0)
 
+# >>> nodus:begin
+# Managed by Nodus. Edit dependencies with `nodus add` and `nodus remove`.
+set(EXTRACTED_CPM_VERSION "0.43.1")
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/nodus/CPM.cmake")
+CPMUsePackageLock("${CMAKE_CURRENT_LIST_DIR}/cmake/nodus/package-lock.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/nodus/dependencies.cmake")
+# <<< nodus:end
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(BUILD_SHARED_LIBS OFF)
-
-include(FetchContent)
-
-FetchContent_Declare(
-  cpr
-  GIT_REPOSITORY https://github.com/libcpr/cpr.git
-  GIT_TAG 1.10.x
-)
-FetchContent_MakeAvailable(cpr)
-
-FetchContent_Declare(
-  cli11
-  GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-  GIT_TAG v2.4.2
-)
-FetchContent_MakeAvailable(cli11)
-
-FetchContent_Declare(
-  indicators
-  GIT_REPOSITORY https://github.com/p-ranav/indicators.git
-  GIT_TAG v2.3
-)
-FetchContent_MakeAvailable(indicators)
 
 if(WIN32)
   set(ERU_EMBED_ARIA2_DEFAULT OFF)
@@ -35,6 +20,7 @@ else()
   set(ERU_EMBED_ARIA2_DEFAULT ON)
 endif()
 option(ERU_EMBED_ARIA2 "Embed libaria2 for in-process torrent downloads" ${ERU_EMBED_ARIA2_DEFAULT})
+option(ERU_STATIC_RUNTIME "Statically link the GNU C/C++ runtime" ON)
 
 if(ERU_EMBED_ARIA2)
   include(ExternalProject)

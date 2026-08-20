@@ -18,6 +18,6 @@ endif()
 add_executable(eru main.cpp)
 target_link_libraries(eru PRIVATE downloader CLI11::CLI11 indicators::indicators)
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND ERU_STATIC_RUNTIME)
     target_link_options(eru PRIVATE -static-libgcc -static-libstdc++)
 endif()
